@@ -19,7 +19,11 @@ public class ChatController {
             model.addAttribute("emptyUsername","");
             return "login";
         }
-
-        return "";
+        if (WebSocketChatServer.isUserOnline(username)) {
+            model.addAttribute("userExists" , "");
+            return "login";
+        }
+        model.addAttribute("username" , username);
+        return "chat";
     }
 }
