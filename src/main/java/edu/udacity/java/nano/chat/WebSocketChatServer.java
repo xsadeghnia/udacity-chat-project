@@ -32,10 +32,6 @@ public class WebSocketChatServer {
        return onlineSessions.containsKey(userName);
     }
 
-    private static void sendMessageToAll(String msg) {
-        //TODO: add send message method.
-    }
-
     /**
      * Open connection, 1) add session, 2) add user.
      */
@@ -49,6 +45,10 @@ public class WebSocketChatServer {
      */
     @OnMessage
     public void onMessage(Session session, String jsonStr) {
+
+        ChatResponse chatResponse = new ChatResponse();
+        chatResponse.setArg1("");
+        chatResponse.setArg2("");
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             // Deserialize request json string to request object.
@@ -61,10 +61,7 @@ public class WebSocketChatServer {
                     sessionIdToUsernameMap.put(session.getId(), username);
 
                     // Create response object.
-                    ChatResponse chatResponse = new ChatResponse();
                     chatResponse.setType(ChatResponse.WELCOME);
-                    chatResponse.setArg1("");
-                    chatResponse.setArg2("");
 
                     // Serialize response object to json.
                     String responseStr = objectMapper.writeValueAsString(chatResponse);
@@ -74,9 +71,47 @@ public class WebSocketChatServer {
                     break;
                 }
                 case ChatRequest.CHAT: {
+
+                    // Create response object.
+                    chatResponse.setType(ChatResponse.RECEIVED);
+                     // Serialize.
+                    String responseStr = objectMapper.writeValueAsString(chatResponse);
+
+                    // Send response json string to client.
+                    session.getBasicRemote().sendText(responseStr);
+
+                    //
+                    String username = sessionIdToUsernameMap.get(session.getId());
+                    String message = chatRequest.getArg();
+                    ChatResponse notifyResponse = new ChatResponse();
+                    notifyResponse.setType(ChatResponse.NOTIFY);
+                    notifyResponse.setArg1(username);
+                    notifyResponse.setArg2(message);
+
+                    // Serialize notify message.
+                    String notifytStr = objectMapper.writeValueAsString(notifyResponse);
+
+                    // Send to all sessions
+                    for (Session s : onlineSessions.values()){
+                        s.getBasicRemote().sendText(notifytStr);
+                    }
+
                     break;
                 }
                 case ChatRequest.LEAVE: {
+                    // Leave logic
+                    String username = sessionIdToUsernameMap.get(session.getId());
+                    onlineSessions.remove(username);
+                    sessionIdToUsernameMap.remove(session.getId());
+
+                    // Create response object.
+                    chatResponse.setType(ChatResponse.BYE);
+
+                    // Serialize
+                    String responseStr = objectMapper.writeValueAsString(chatResponse);
+
+                    // Send response json string to client.
+                    session.getBasicRemote().sendText(responseStr);
 
                     break;
                 }
