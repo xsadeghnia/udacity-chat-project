@@ -56,7 +56,7 @@ public class WebSocketChatServer {
             switch (chatRequest.getType()){
                 case ChatRequest.ENTER: {
                     // Update internal maps.
-                    String username = chatRequest.getArg();
+                    String username = chatRequest.getArg1();
                     onlineSessions.put(username, session);
                     sessionIdToUsernameMap.put(session.getId(), username);
 
@@ -82,21 +82,46 @@ public class WebSocketChatServer {
 
                     //
                     String username = sessionIdToUsernameMap.get(session.getId());
-                    String message = chatRequest.getArg();
+                    String message = chatRequest.getArg2();
                     ChatResponse notifyResponse = new ChatResponse();
                     notifyResponse.setType(ChatResponse.NOTIFY);
                     notifyResponse.setArg1(username);
                     notifyResponse.setArg2(message);
 
                     // Serialize notify message.
-                    String notifytStr = objectMapper.writeValueAsString(notifyResponse);
+                    String notifyStr = objectMapper.writeValueAsString(notifyResponse);
 
                     // Send to all sessions
                     for (Session s : onlineSessions.values()){
-                        s.getBasicRemote().sendText(notifytStr);
+                        s.getBasicRemote().sendText(notifyStr);
                     }
 
                     break;
+                }
+                case ChatRequest.DIRECT: {
+                    chatResponse.setType(ChatResponse.RECEIVED);
+                    String responseStr = objectMapper.writeValueAsString(chatResponse);
+                    session.getBasicRemote().sendText(responseStr);
+
+
+                    String username = sessionIdToUsernameMap.get(session.getId());
+                    String message = chatRequest.getArg1();
+                    ChatResponse notifyResponse = new ChatResponse();
+                    notifyResponse.setType(ChatResponse.NOTIFY);
+                    notifyResponse.setArg1(username);
+                    notifyResponse.setArg2(message);
+                    // Serialize
+                    String notifyStr = objectMapper.writeValueAsString(notifyResponse);
+
+                    // send to a person.
+                    Session receiverSession = onlineSessions.get(chatRequest.getArg2());
+                    for (Session s:onlineSessions.values()){
+                        if (s == receiverSession){
+                            s.getBasicRemote().sendText(notifyStr);
+                        }
+                    }
+                    break;
+
                 }
                 case ChatRequest.LEAVE: {
                     // Leave logic
