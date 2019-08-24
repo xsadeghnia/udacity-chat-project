@@ -13,7 +13,7 @@
     <div class="mdui-toolbar mdui-color-theme">
         <span class="mdui-typo-title">Chat Room</span>
         <div class="mdui-toolbar-spacer"></div>
-        <a class="mdui-btn mdui-btn-icon" th:href="@{/}">
+        <a class="mdui-btn mdui-btn-icon" onclick="leave()">
             <i class="mdui-icon material-icons">exit_to_app</i>
         </a>
     </div>
@@ -36,7 +36,9 @@
                         <input class="mdui-textfield-input" id="msg"/>
                     </div>
                     <div class="mdui-container" style="padding:20px 35px">
-                        <!-- TODO: add a send button to send message -->
+                        <button class="mdui-btn mdui-color-theme mdui-ripple"
+                                onclick="sendMsgToServer()">Send
+                        </button>
                         <button class="mdui-btn mdui-color-theme mdui-ripple"
                                 onclick="clearMsg()">Clear
                         </button>
@@ -54,10 +56,9 @@
                 <div class="mdui-chip">
                     <span class="mdui-chip-icon mdui-color-blue">
                         <i class="mdui-icon material-icons">face</i></span>
-                    <span class="mdui-chip-title">Online Users</span>
-                    <!-- TODO: check online number num -->
+                    <span id ="onlineCount" class="mdui-chip-title">0 Online Users</span>
                 </div>
-                <!-- TODO: add a message container -->
+                <div class="message-container"/>
             </div>
 
         </div>
@@ -76,12 +77,18 @@
         /**
          * WebSocket client PS：URL shows WebSocket protocal, port number, and then end point.
          */
-        var webSocket = new WebSocket(/*[[${webSocketUrl}]]*/ 'ws://localhost:8080/chat');
+        var webSocket = new WebSocket('ws://localhost:8080/chat');
         /**
          * websocket open connection.
          */
         webSocket.onopen = function (event) {
             console.log('WebSocket open connection');
+            var enterReq = {};
+            enterReq.type = "ENTER";
+            enterReq.arg1 = $('#username').text();
+            enterReq.arg2 = "";
+            var enterReqStr = JSON.stringify(enterReq);
+            webSocket.send(enterReqStr);
         };
 
         /**
@@ -92,12 +99,21 @@
             //Receive Message from Server
             var message = JSON.parse(event.data) || {};
             var $messageContainer = $('.message-container');
-            if (message.type === 'SPEAK') {
+            if (message.type === 'WELCOME'){
+                welcomeReceived = true;
+                console.log("welcome message received");
+            } else if (message.type === 'NOTIFY') {
                 $messageContainer.append(
                     '<div class="mdui-card" style="margin: 10px 0;">' +
                     '<div class="mdui-card-primary">' +
-                    '<div class="mdui-card-content message-content">' + message.username + "：" + message.msg + '</div>' +
+                    '<div class="mdui-card-content message-content">' + message.arg1 + "：" + message.arg2 + '</div>' +
                     '</div></div>');
+            }else if (message.type === 'RECEIVED'){
+                console.log('Received!');
+            }else if (message.type === 'COUNT'){
+                $("#onlineCount").html(message.arg1+ " Online Users");
+            }else if (message.type === 'BYE'){
+                window.location.href = "/";
             }
             $('.chat-num').text(message.onlineCount);
             var $cards = $messageContainer.children('.mdui-card:visible').toArray();
@@ -123,21 +139,32 @@
         };
         return webSocket;
     }
-
+    var welcomeReceived = false;
     var webSocket = getWebSocket();
-
 
     /**
      * Send messages to server use webSocket.
      */
     function sendMsgToServer() {
-        var $message = $('#msg');
-        if ($message.val()) {
-            webSocket.send(JSON.stringify({username: $('#username').text(), msg: $message.val()}));
-            $message.val(null);
+        var message = $('#msg');
+        if (message.val()) {
+            console.log(message.val());
+            var chatReq = {};
+            chatReq.type = "CHAT";
+            chatReq.arg1 = message.val();
+            chatReq.arg2 = "";
+            webSocket.send(JSON.stringify(chatReq));
+            message.val(null);
         }
     }
-
+    function leave(){
+        var leaveReq = {};
+        leaveReq.type = "LEAVE";
+        leaveReq.arg1 = "";
+        leaveReq.arg2 = "";
+        var leaveReqStr = JSON.stringify(leaveReq);
+        webSocket.send(leaveReqStr);
+        }
     /**
      * Clear screen
      */
@@ -149,6 +176,7 @@
      * Enter to send message.
      */
     document.onkeydown = function (event) {
+        if (!welcomeReceived) { return; }
         var e = event || window.event || arguments.callee.caller.arguments[0];
         e.keyCode === 13 && sendMsgToServer();
     };

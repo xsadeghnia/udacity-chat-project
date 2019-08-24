@@ -5,6 +5,7 @@ public class ChatResponse {
     public static final String RECEIVED = "RECEIVED";
     public static final String NOTIFY = "NOTIFY";
     public static final String BYE = "BYE";
+    public static final String COUNT= "COUNT";
 
     private String type;
     private String arg1;
