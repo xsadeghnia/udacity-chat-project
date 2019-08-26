@@ -43,6 +43,7 @@
                                 onclick="clearMsg()">Clear
                         </button>
                     </div>
+                    <div id="user-container"></div>
                 </div>
             </div>
 
@@ -114,6 +115,17 @@
                 $("#onlineCount").html(message.arg1+ " Online Users");
             }else if (message.type === 'BYE'){
                 window.location.href = "/";
+            }else if(message.type === 'USER_JOINED'){
+                if(message.arg1 === $('#username').text()){
+                return;
+                }
+                $("#user-container").append("<p id = 'user-" + message.arg1 + "'>" + message.arg1 + "</p>");
+            }else if(message.type === 'USER_LIST'){
+                for(var l in message.list){
+                 $("#user-container").append("<p id= 'user-" + message.arg1 + "'>" + message.list[l] + "</p>");
+                }
+            }else if (message.type === 'USER_LEFT'){
+                 $("#user-" +message.arg1).remove();
             }
             $('.chat-num').text(message.onlineCount);
             var $cards = $messageContainer.children('.mdui-card:visible').toArray();

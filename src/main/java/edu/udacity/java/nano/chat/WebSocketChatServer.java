@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -96,6 +97,23 @@ public class WebSocketChatServer {
                     String responseStr = objectMapper.writeValueAsString(chatResponse);
                     // Send response json string to client.
                     session.getBasicRemote().sendText(responseStr);
+
+                    // Create USER_JOINED response object.
+                    ChatResponse joinedResponse = new ChatResponse();
+                    joinedResponse.setType(ChatResponse.USER_JOINED);
+                    joinedResponse.setArg1(username);
+                    joinedResponse.setArg2("");
+                    String joinedStr = objectMapper.writeValueAsString(joinedResponse);
+                    for (Session s : onlineSessions.values()){
+                        s.getBasicRemote().sendText(joinedStr);
+                    }
+                    ChatResponse listResponse = new ChatResponse();
+                    listResponse.setType(ChatResponse.USER_LIST);
+                    listResponse.setList(new ArrayList<>(onlineSessions.keySet()));
+                    listResponse.setArg1("");
+                    listResponse.setArg2("");
+                    String listStr = objectMapper.writeValueAsString(listResponse);
+                    session.getBasicRemote().sendText(listStr);
                     break;
                 }
                 case ChatRequest.CHAT: {
@@ -157,6 +175,15 @@ public class WebSocketChatServer {
 
                     // Send response json string to client.
                     session.getBasicRemote().sendText(responseStr);
+                    //
+                    ChatResponse userLeft = new ChatResponse();
+                    userLeft.setType(ChatResponse.USER_LEFT);
+                    userLeft.setArg1(username);
+                    userLeft.setArg2("");
+                    String leftStr = objectMapper.writeValueAsString(userLeft);
+                    for (Session s : onlineSessions.values()) {
+                        s.getBasicRemote().sendText(leftStr);
+                    }
 
                     break;
                 }
