@@ -1,10 +1,8 @@
 package edu.udacity.java.nano.chat;
 
-import org.springframework.stereotype.Service;
 
 import javax.websocket.Session;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 interface ChatEndpoint {
@@ -12,13 +10,37 @@ interface ChatEndpoint {
     void sendToAll(ChatResponse chatResponse) throws IOException;
     void registerUsername(String username, Session session);
     void unregisterUsername(String username);
+    int getNumOfUsers();
     List<String> getAllUsernames();
 }
 
-@Service
 public class ChatService {
 
-    public void handleEnterReq(ChatRequest chatRequest, ChatEndpoint chatEndpoint, Session session)
+    private ChatEndpoint chatEndpoint;
+
+    public ChatService(ChatEndpoint chatEndpoint) {
+        this.chatEndpoint = chatEndpoint;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true){
+                    try {
+                        ChatResponse chatResponse = ChatResponse.createUserCountResponse(chatEndpoint.getNumOfUsers());
+                        chatEndpoint.sendToAll(chatResponse);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        Thread.sleep(5 * 1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    public void handleEnterReq(ChatRequest chatRequest, Session session)
             throws IOException {
         String username = chatRequest.getArg1();
         chatEndpoint.registerUsername(username, session);
@@ -34,7 +56,7 @@ public class ChatService {
         chatEndpoint.send(username, listResponse);
     }
 
-    public void  handleChatRequest(ChatRequest chatRequest, ChatEndpoint chatEndpoint,String username)
+    public void  handleChatRequest(ChatRequest chatRequest, String username)
             throws IOException {
         ChatResponse receivedResponse = ChatResponse.createReceivedResponse();
         chatEndpoint.send(username, receivedResponse);
@@ -44,7 +66,7 @@ public class ChatService {
         chatEndpoint.sendToAll(notifyResponse);
     }
 
-    public void  handleDirectChatRequest(ChatRequest chatRequest, ChatEndpoint chatEndpoint, String username)
+    public void  handleDirectChatRequest(ChatRequest chatRequest, String username)
             throws IOException {
         ChatResponse receivedResponse = ChatResponse.createReceivedResponse();
         chatEndpoint.send(username, receivedResponse);
@@ -54,12 +76,12 @@ public class ChatService {
         ChatResponse notifyResponse = ChatResponse.createNotifyResponse(username, message);
         chatEndpoint.send(targetUsername, notifyResponse);
     }
-    public void handleLeaveRequest(ChatEndpoint chatEndpoint, String username)
+    public void handleLeaveRequest(String username)
             throws IOException {
-        chatEndpoint.unregisterUsername(username);
-
         ChatResponse byeResponse = ChatResponse.createByeResponse();
         chatEndpoint.send(username, byeResponse);
+
+        chatEndpoint.unregisterUsername(username);
 
         ChatResponse userLeft = ChatResponse.createUserLeftResponse(username);
         chatEndpoint.sendToAll(userLeft);

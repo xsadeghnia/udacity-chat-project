@@ -13,12 +13,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@RunWith(SpringJUnit4ClassRunner.class) // @RunWith: integrate spring with junit
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@RunWith(SpringJUnit4ClassRunner.class)
 public class ChatServiceTest {
-
-    @Resource
-    private ChatService chatService;
 
     @Test
     public void testEnterRequest() throws IOException {
@@ -48,6 +44,11 @@ public class ChatServiceTest {
             }
 
             @Override
+            public int getNumOfUsers() {
+                return 0;
+            }
+
+            @Override
             public List<String> getAllUsernames() {
                 return null;
             }
@@ -57,7 +58,9 @@ public class ChatServiceTest {
         chatRequest.setType(ChatRequest.ENTER);
         chatRequest.setArg1("foo");
         chatRequest.setArg2("");
-        chatService.handleEnterReq(chatRequest, fakeChatEndpoint,null);
+
+        ChatService chatService = new ChatService(fakeChatEndpoint);
+        chatService.handleEnterReq(chatRequest,null);
         Assert.assertTrue(fired.get());
     }
 }
